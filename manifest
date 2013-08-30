@@ -1,0 +1,4 @@
+{
+  "type" : "python",
+    "slave" : "/home/noname/work/misc/pyurlfetcher/pyurlfetcher/pyurlfetcher.py"
+}
