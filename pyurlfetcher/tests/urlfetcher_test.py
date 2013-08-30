@@ -80,7 +80,7 @@ class UrlFetcherTestCase(AsyncTestCase):
         urlfetcher = UrlFetcher(self.ioLoop)
 
         url = 'http://ya.ru'
-        request = RequestMock(url=url)
+        request = RequestMock(url=url, cookies={'test' : 'testvalue'}, headers={'Cookie':['a=1', 'b=2'], 'Accept-Language': ['ru-Ru']})
         response = ResponseMock()
         urlfetcher.on_get_request(request, response).get()
         self.assertEquals(response.response[0],True)
