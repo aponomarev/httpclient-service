@@ -10,13 +10,25 @@ from cocaine.logging import Logger
 from cocaine.futures import chain
 
 
-class RequestConst:
+class GetRequestConst:
     URL = 0
     TIMEOUT = 1
     COOKIES = 2
     HEADERS = 3
     FOLLOW_REDIRECTS = 4
 
+class PostRequestConst:
+    URL = 0
+    BODY = 1
+    TIMEOUT = 2
+    COOKIES = 3
+    HEADERS = 4
+    FOLLOW_REDIRECTS = 5
+
+request_consts = {
+    'GET' : GetRequestConst,
+    'POST' : PostRequestConst
+}
 
 class UrlFetcher():
     def __init__(self, io_loop):
@@ -24,30 +36,33 @@ class UrlFetcher():
         self.http_client = AsyncHTTPClient()
         self.logger = Logger()
 
-    def on_get_request(self, request, response):
-        request_data_packed = yield request.read()
-        request_data = msgpack.unpackb(request_data_packed)
+    @chain.source
+    def perform_request(self, request, response, method):
+        constants = request_consts[method]
 
-        self.logger.info("request is {0}".format(str(request_data)))
-
-        url = request_data[RequestConst.URL]
+        url = request[constants.URL]
         try:
-            http_request = HTTPRequest(url)
+            http_request = HTTPRequest(url=url, method=method)
 
-            headers = HTTPHeaders()
+            if method == 'POST':
+                http_request.body = request[constants.BODY]
 
-            if RequestConst.COOKIES in request_data:
-                cookies = request_data[RequestConst.COOKIES]
-                for name, value in cookies:
-                    headers.add('Cookie', '{0}={1}'.format(name, value))
+            #adds cookies to request
+            params_num = len(request)
+            if constants.COOKIES <= params_num - 1:
+                cookies = request[constants.COOKIES]
+                for name, value in cookies.iteritems():
+                    http_request.headers.add('Cookie', '{0}={1}'.format(name, value))
 
-            if RequestConst.HEADERS in request_data:
-                for name, values_list in request_data[RequestConst.HEADERS]:
+            #adds headers to request
+            if constants.HEADERS <= params_num - 1:
+                for name, values_list in request[constants.HEADERS].iteritems():
                     for value in values_list:
-                        headers.add(name, value)
+                        http_request.headers.add(name, value)
 
             http_response = yield self.http_client.fetch(http_request)
 
+            #retrieves headers from response
             response_headers = {}
             for header_tuple in http_response.headers.items():
                 name = header_tuple[0]
@@ -75,6 +90,19 @@ class UrlFetcher():
             response.write((False, '', 0, {},))
             response.close()
 
+    @chain.source
+    def on_get_request(self, request, response):
+        request_data_packed = yield request.read()
+        request_data = msgpack.unpackb(request_data_packed)
+
+        yield self.perform_request(request_data, response, 'GET')
+
+    @chain.source
+    def on_post_request(self, request, response):
+        request_data_packed = yield request.read()
+        request_data = msgpack.unpackb(request_data_packed)
+
+        yield self.perform_request(request_data, response, 'POST')
 
 def main():
     AsyncHTTPClient.configure("tornado.curl_httpclient.CurlAsyncHTTPClient")
