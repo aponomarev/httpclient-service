@@ -62,23 +62,21 @@ class UrlFetcher():
 
             http_response = yield self.http_client.fetch(http_request)
 
-            #retrieves headers from response
-            response_headers = {}
-            for header_tuple in http_response.headers.items():
-                name = header_tuple[0]
-                value = header_tuple[1]
-                if not name in response_headers:
-                    response_headers[name] = []
-
-                response_headers[name].append(value)
-
+            response_headers = self._get_headers_from_response(http_response)
             response.write((True, http_response.body, http_response.code, response_headers,))
 
             response.close()
             self.logger.info("{0} has been successfuly downloaded".format(url))
         except HTTPError as e:
             self.logger.info("Error ({0}) occured while downloading {1}".format(e.message, url))
-            response.write((False, '', e.code, {},))
+
+            if e.response is not None:
+                http_response = e.response
+                response_headers = self._get_headers_from_response(http_response)
+                response.write((False, http_response.body, http_response.code, response_headers,))
+            else:
+                response.write((False, '', e.code, {},))
+
             response.close()
         except socket.gaierror as e:
             self.logger.info("Error ({0}) occured while downloading {1}".format(e.message, url))
@@ -103,6 +101,18 @@ class UrlFetcher():
         request_data = msgpack.unpackb(request_data_packed)
 
         yield self.perform_request(request_data, response, 'POST')
+
+    def _get_headers_from_response(self, http_response):
+        response_headers = {}
+        for header_tuple in http_response.headers.items():
+            name = header_tuple[0]
+            value = header_tuple[1]
+            if not name in response_headers:
+                response_headers[name] = []
+
+            response_headers[name].append(value)
+
+        return response_headers
 
 def main():
     AsyncHTTPClient.configure("tornado.curl_httpclient.CurlAsyncHTTPClient")
