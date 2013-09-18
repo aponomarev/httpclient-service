@@ -41,8 +41,10 @@ class UrlFetcher():
         constants = request_consts[method]
 
         url = request[constants.URL]
+        timeout = request[constants.TIMEOUT]
         try:
             http_request = HTTPRequest(url=url, method=method)
+            http_request.request_timeout = float(timeout)/1000
 
             if method == 'POST':
                 http_request.body = request[constants.BODY]
@@ -115,7 +117,6 @@ class UrlFetcher():
         return response_headers
 
 def main():
-    AsyncHTTPClient.configure("tornado.curl_httpclient.CurlAsyncHTTPClient")
     worker = Worker()
     urlfetcher = UrlFetcher(io_loop=worker.loop)
     worker.on('get', urlfetcher.on_get_request)
