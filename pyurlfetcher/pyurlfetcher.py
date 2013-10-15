@@ -3,6 +3,7 @@ __author__ = 'Alexander Ponomarev'
 
 import msgpack
 import socket
+import tornado
 from tornado.httpclient import AsyncHTTPClient, HTTPResponse, HTTPRequest, HTTPError
 from tornado.httputil import HTTPHeaders
 from cocaine.worker import Worker
@@ -53,8 +54,11 @@ class UrlFetcher():
             params_num = len(request)
             if constants.COOKIES <= params_num - 1:
                 cookies = request[constants.COOKIES]
-                for name, value in cookies.iteritems():
-                    http_request.headers.add('Cookie', '{0}={1}'.format(name, value))
+                if len(cookies) > 0:
+                    list_of_cookies = list('{0}={1}'.format(cookie, value) for cookie, value in cookies.iteritems())
+                    cookies_str = '; '.join(list_of_cookies)
+
+                    http_request.headers.add('Cookie', cookies_str)
 
             #adds headers to request
             if constants.HEADERS <= params_num - 1:
