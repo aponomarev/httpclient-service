@@ -3,9 +3,7 @@ __author__ = 'Alexander Ponomarev'
 
 import msgpack
 import socket
-import tornado
-from tornado.httpclient import AsyncHTTPClient, HTTPResponse, HTTPRequest, HTTPError
-from tornado.httputil import HTTPHeaders
+from tornado.httpclient import AsyncHTTPClient, HTTPRequest, HTTPError
 from cocaine.worker import Worker
 from cocaine.logging import Logger
 from cocaine.futures import chain
