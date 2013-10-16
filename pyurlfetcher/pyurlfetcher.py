@@ -64,6 +64,7 @@ class UrlFetcher():
                     for value in values_list:
                         http_request.headers.add(name, value)
 
+            self.logger.info("Downloading {0}, headers {1}".format(url, http_request.headers))
             http_response = yield self.http_client.fetch(http_request)
 
             response_headers = self._get_headers_from_response(http_response)
