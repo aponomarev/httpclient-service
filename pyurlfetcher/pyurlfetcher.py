@@ -123,6 +123,7 @@ def main():
     worker = Worker()
     urlfetcher = UrlFetcher(io_loop=worker.loop)
     worker.on('get', urlfetcher.on_get_request)
+    worker.on('post', urlfetcher.on_post_request)
     worker.run()
 
 
