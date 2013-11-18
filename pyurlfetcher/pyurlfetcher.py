@@ -104,6 +104,8 @@ class UrlFetcher():
             request_data = msgpack.unpackb(request_data_packed)
 
             yield self.perform_request(request_data, response, 'GET')
+        except StopIteration:
+            pass
         except Exception as e:
             self.logger.error("Unhandled error ({0}) occured in on_get_request, report about this problem "
                               "to httpclient service developers. Stacktrace is: {1}".format(e.message, traceback.format_exc()))
@@ -117,6 +119,8 @@ class UrlFetcher():
             request_data = msgpack.unpackb(request_data_packed)
 
             yield self.perform_request(request_data, response, 'POST')
+        except StopIteration:
+            pass
         except Exception as e:
             self.logger.error("Unhandled error ({0}) occured in on_post_request, report about this problem "
                               "to httpclient service developers. Stacktrace is: {1}".format(e.message, traceback.format_exc()))
