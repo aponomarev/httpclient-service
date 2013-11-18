@@ -3,6 +3,7 @@ __author__ = 'Alexander Ponomarev'
 
 import msgpack
 import socket
+import traceback
 from tornado.httpclient import AsyncHTTPClient, HTTPRequest, HTTPError
 from cocaine.worker import Worker
 from cocaine.logging import Logger
@@ -37,11 +38,12 @@ class UrlFetcher():
 
     @chain.source
     def perform_request(self, request, response, method):
-        constants = request_consts[method]
-
-        url = request[constants.URL]
-        timeout = request[constants.TIMEOUT]
         try:
+            constants = request_consts[method]
+
+            url = request[constants.URL]
+            timeout = request[constants.TIMEOUT]
+
             http_request = HTTPRequest(url=url, method=method)
             http_request.request_timeout = float(timeout)/1000
 
@@ -64,7 +66,7 @@ class UrlFetcher():
                     for value in values_list:
                         http_request.headers.add(name, value)
 
-            self.logger.info("Downloading {0}, headers {1}".format(url, http_request.headers))
+            self.logger.info("Downloading {0}, headers {1}, method {2}".format(url, http_request.headers, method))
             http_response = yield self.http_client.fetch(http_request)
 
             response_headers = self._get_headers_from_response(http_response)
@@ -88,24 +90,38 @@ class UrlFetcher():
             response.write((False, '', e.errno, {},))
             response.close()
         except Exception as e:
-            self.logger.error("Unhandled error ({0}) occured while downloading {1}, report about this problem "
-                              "to httpclient service developers".format(e.message, url))
+            self.logger.error("Unhandled error ({0}) occured in perform_request, report about this problem "
+                          "to httpclient service developers. Method is {1}, stacktrace is: {2}".format(
+                                e.message, method, traceback.format_exc()))
+
             response.write((False, '', 0, {},))
             response.close()
 
     @chain.source
     def on_get_request(self, request, response):
-        request_data_packed = yield request.read()
-        request_data = msgpack.unpackb(request_data_packed)
+        try:
+            request_data_packed = yield request.read()
+            request_data = msgpack.unpackb(request_data_packed)
 
-        yield self.perform_request(request_data, response, 'GET')
+            yield self.perform_request(request_data, response, 'GET')
+        except Exception as e:
+            self.logger.error("Unhandled error ({0}) occured in on_get_request, report about this problem "
+                              "to httpclient service developers. Stacktrace is: {1}".format(e.message, traceback.format_exc()))
+            response.write((False, '', 0, {},))
+            response.close()
 
     @chain.source
     def on_post_request(self, request, response):
-        request_data_packed = yield request.read()
-        request_data = msgpack.unpackb(request_data_packed)
+        try:
+            request_data_packed = yield request.read()
+            request_data = msgpack.unpackb(request_data_packed)
 
-        yield self.perform_request(request_data, response, 'POST')
+            yield self.perform_request(request_data, response, 'POST')
+        except Exception as e:
+            self.logger.error("Unhandled error ({0}) occured in on_post_request, report about this problem "
+                              "to httpclient service developers. Stacktrace is: {1}".format(e.message, traceback.format_exc()))
+            response.write((False, '', 0, {},))
+            response.close()
 
     def _get_headers_from_response(self, http_response):
         response_headers = {}
